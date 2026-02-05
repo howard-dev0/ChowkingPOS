@@ -24,11 +24,13 @@ public class ChowkingPOS extends javax.swing.JFrame {
     private java.util.ArrayList<CartItem> cart = new java.util.ArrayList<>();
     private javax.swing.table.DefaultTableModel cartTableModel;
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(ChowkingPOS.class.getName());
-    // LAST TRANSACTION MEMORY nya ---
+    // --- LAST TRANSACTION MEMORY nya
     private java.util.ArrayList<CartItem> lastTransactionItems = new java.util.ArrayList<>();
     private double lastTotal = 0;
     private double lastCash = 0;
     private double lastChange = 0;
+    private String lastPaymentMethod = "CASH";
+    
 
     /**
      * Creates new form ChowkingPOS
@@ -144,7 +146,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
         sb.append("\t =====================================\n");
         sb.append("\t          ** REPRINT COPY ** \n");
         sb.append("\t =====================================\n");
-
+        sb.append(String.format("\t %-30s%.2f\n", lastPaymentMethod, lastCash));
         // 5. SHOW POPUP
         javax.swing.JTextArea textArea = new javax.swing.JTextArea(sb.toString());
         textArea.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
@@ -334,40 +336,62 @@ public class ChowkingPOS extends javax.swing.JFrame {
             return;
         }
 
+        // 1. Calculate Total
         double totalAmount = 0;
-        for (CartItem c : cart) {
-            totalAmount += (c.item.price * c.quantity);
-        }
+        for (CartItem c : cart) totalAmount += (c.item.price * c.quantity);
 
-        String cashStr = NumpadDialog.show(this, "Total: P" + totalAmount + "\nEnter Cash:");
-        if (cashStr != null) {
+        // 2. Select Payment Method
+        String[] options = {"CASH", "GCASH", "MAYA", "CARD"};
+        int choice = javax.swing.JOptionPane.showOptionDialog(this, 
+                "Select Payment Method for P" + String.format("%.2f", totalAmount), 
+                "Payment", 
+                javax.swing.JOptionPane.DEFAULT_OPTION, 
+                javax.swing.JOptionPane.QUESTION_MESSAGE, 
+                null, options, options[0]);
+
+        if (choice == -1) return; // User closed the dialog
+
+        String selectedMethod = options[choice];
+        double cashProvided = 0;
+        double change = 0;
+
+        // 3. Handle Input based on Method
+        if (selectedMethod.equals("CASH")) {
+            // --- CASH LOGIC (Ask for amount) ---
+            String cashStr = NumpadDialog.show(this, "Total: P" + totalAmount + "\nEnter Cash:");
+            if (cashStr == null) return; // Cancelled
+            
             try {
-                double cash = Double.parseDouble(cashStr);
-                if (cash >= totalAmount) {
-                    double change = cash - totalAmount;
-
-                    // 1. SAVE FOR REPRINT
-                    lastTransactionItems.clear();
-                    lastTransactionItems.addAll(cart);
-                    lastTotal = totalAmount;
-                    lastCash = cash;
-                    lastChange = change;
-
-                    // 2. SHOW ASCII POPUP (Missing in your code!)
-                    showAsciiReceiptPopup(totalAmount, cash, change);
-
-                    // 3. PRINT TO PDF
-                    printReceipt(totalAmount, cash, change);
-
-                    // 4. CLEAR
-                    clearCart();
-                } else {
+                cashProvided = Double.parseDouble(cashStr);
+                if (cashProvided < totalAmount) {
                     javax.swing.JOptionPane.showMessageDialog(this, "Insufficient Cash!");
+                    return;
                 }
-            } catch (NumberFormatException e) {
-                // Handle invalid number input
-            }
+                change = cashProvided - totalAmount;
+            } catch (NumberFormatException e) { return; }
+            
+        } else {
+            // --- E-WALLET / CARD LOGIC (Exact Payment) ---
+            // Optional: You could ask for a Reference Number here if you want
+            cashProvided = totalAmount; 
+            change = 0;
+            javax.swing.JOptionPane.showMessageDialog(this, selectedMethod + " Payment Confirmed.");
         }
+
+        // 4. Save Data (Include the Payment Method!)
+        lastTransactionItems.clear();
+        lastTransactionItems.addAll(cart);
+        lastTotal = totalAmount;
+        lastCash = cashProvided;
+        lastChange = change;
+        lastPaymentMethod = selectedMethod; // <--- SAVE METHOD
+
+        // 5. Show Popup & Print
+        showAsciiReceiptPopup(totalAmount, cashProvided, change, selectedMethod);
+        printReceipt(totalAmount, cashProvided, change);
+
+        // 6. Clear
+        clearCart();
     }
 
     private void editSelectedItem() {
@@ -400,74 +424,57 @@ public class ChowkingPOS extends javax.swing.JFrame {
         }
     }
 
-    private void showAsciiReceiptPopup(double total, double cash, double change) {
+    // CHANGED: Added 'String payMethod' to the arguments
+    private void showAsciiReceiptPopup(double total, double cash, double change, String payMethod) {
         StringBuilder sb = new StringBuilder();
-
-        // --- 1. GET DATE & TIME ---
+        
+        // ... (Keep your existing Header and Time code here) ...
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd  HH:mm:ss");
         String dateTimeStr = now.format(formatter);
-
-        // --- 2. CALCULATE VAT (Philippine Standard) ---
+        
+        // ... (Keep your existing VAT calculation code here) ...
         double vatableSales = total / 1.12;
         double vatAmount = total - vatableSales;
-        double vatExempt = 0.00;
-        double vatZeroRated = 0.00;
         int totalItems = 0;
-        for (CartItem c : cart) {
-            totalItems += c.quantity;
-        }
+        for (CartItem c : cart) totalItems += c.quantity;
 
-        // --- 3. BUILD THE STRING ---
-        // Header
+        // ... (Keep Header building code) ...
         sb.append("\t     CHOWKING POS SYSTEM\n");
         sb.append("\t   San Jose del Monte Branch\n");
-        sb.append("\t   " + dateTimeStr + "\n"); // <--- ADDED DATE HERE
+        sb.append("\t   " + dateTimeStr + "\n");
         sb.append("\t   -------------------------\n\n");
 
-        // Loop Items
+        // ... (Keep Item Loop code) ...
         for (int i = 0; i < cart.size(); i++) {
             CartItem c = cart.get(i);
-            sb.append(String.format("\t %d. %-15s - %.2f x %d = P%.2f\n",
-                    i + 1,
-                    truncate(c.item.name, 15),
-                    c.item.price,
-                    c.quantity,
-                    c.item.price * c.quantity));
+            sb.append(String.format("\t %d. %-15s - %.2f x %d = P%.2f\n", 
+                i + 1, truncate(c.item.name, 15), c.item.price, c.quantity, c.item.price * c.quantity));
         }
 
-        // Footer Totals
+        // --- UPDATED FOOTER ---
         sb.append("\t ----------------------------------------\n");
-        sb.append(String.format("\t %.0f Item(s)                     %.2f\n", (double) totalItems, total));
+        sb.append(String.format("\t %.0f Item(s)                     %.2f\n", (double)totalItems, total));
         sb.append(String.format("\t TOTAL DUE                     %.2f\n", total));
-        sb.append(String.format("\t CASH                          %.2f\n", cash));
+        
+        // CHANGED: Display the Payment Method Name
+        sb.append(String.format("\t %-30s%.2f\n", payMethod, cash)); 
+        
         sb.append(String.format("\t CHANGE DUE                    %.2f\n\n", change));
-
-        // Tax Breakdown
+        
+        // ... (Keep the rest of the Footer/VAT code) ...
         sb.append(String.format("\t VATable Sales                 %.2f\n", vatableSales));
-        sb.append(String.format("\t VAT-Exempt Sales              %.2f\n", vatExempt));
-        sb.append(String.format("\t VATable Zero-Rated Sales      %.2f\n", vatZeroRated));
         sb.append(String.format("\t VAT Amount                    %.2f\n", vatAmount));
-
-        // Footer Messages
         sb.append("\n\t This serves as your OFFICIAL RECEIPT.\n");
-        sb.append("\t    CHOWKING DELIVERY? CALL #9-88-88\n");
-        sb.append("\t    For any feedback, contact us at\n");
-        sb.append("\t    Email: feedback@chowking.com.ph\n");
-        sb.append("\t     ACCREDITATION NO.: 030-000330515\n\n");
-        sb.append("\t =====================================\n");
-        sb.append("\t    THANK YOU FOR ORDERING ONLINE!  \n");
         sb.append("\t =====================================\n");
 
-        // --- 4. DISPLAY IN SCROLLABLE POPUP ---
+        // ... (Keep existing TextArea/ScrollPane code) ...
         javax.swing.JTextArea textArea = new javax.swing.JTextArea(sb.toString());
-        textArea.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+        textArea.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12)); 
         textArea.setEditable(false);
-
         javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(textArea);
         scrollPane.setPreferredSize(new java.awt.Dimension(400, 500));
-
-        javax.swing.JOptionPane.showMessageDialog(this, scrollPane, "Official Receipt", javax.swing.JOptionPane.PLAIN_MESSAGE);
+        javax.swing.JOptionPane.showMessageDialog(this, scrollPane, "Official Receipt", javax.swing.JOptionPane.INFORMATION_MESSAGE);
     }
 
 // Helper to prevent long names from breaking the ASCII layout
