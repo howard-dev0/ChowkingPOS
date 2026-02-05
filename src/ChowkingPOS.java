@@ -30,7 +30,6 @@ public class ChowkingPOS extends javax.swing.JFrame {
     private double lastCash = 0;
     private double lastChange = 0;
     private String lastPaymentMethod = "CASH";
-    
 
     /**
      * Creates new form ChowkingPOS
@@ -97,7 +96,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
             pnlCategories.add(catBtn);
         }
     }
-    
+
     private void reprintAsciiPopup() {
         // 1. Safety Check
         if (lastTransactionItems.isEmpty()) {
@@ -115,7 +114,9 @@ public class ChowkingPOS extends javax.swing.JFrame {
         double vatableSales = lastTotal / 1.12;
         double vatAmount = lastTotal - vatableSales;
         int totalItems = 0;
-        for (CartItem c : lastTransactionItems) totalItems += c.quantity;
+        for (CartItem c : lastTransactionItems) {
+            totalItems += c.quantity;
+        }
 
         // 4. BUILD STRING (Using SAVED Data)
         sb.append("\t     CHOWKING POS SYSTEM\n");
@@ -141,7 +142,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
 
         sb.append(String.format("\t VATable Sales                 %.2f\n", vatableSales));
         sb.append(String.format("\t VAT Amount                    %.2f\n", vatAmount));
-        
+
         sb.append("\n\t This serves as your OFFICIAL RECEIPT.\n");
         sb.append("\t =====================================\n");
         sb.append("\t          ** REPRINT COPY ** \n");
@@ -157,7 +158,6 @@ public class ChowkingPOS extends javax.swing.JFrame {
 
         javax.swing.JOptionPane.showMessageDialog(this, scrollPane, "Reprint Receipt", javax.swing.JOptionPane.INFORMATION_MESSAGE);
     }
-    
 
     private void loadMenuCategory(String category) {
         pnlMenuGrid.removeAll();
@@ -306,12 +306,16 @@ public class ChowkingPOS extends javax.swing.JFrame {
             total += lineTotal;
             cartTableModel.addRow(new Object[]{c.item.name, c.quantity, String.format("%.2f", c.item.price), String.format("%.2f", lineTotal)});
         }
-        double vat = total * 0.12;
+        
+        // --- FIX TAX CALCULATION (VAT is usually inside the price) ---
+        // Example: If Total is 112, Vatable is 100, Tax is 12.
+        double vatableSales = total / 1.12; 
+        double vat = total - vatableSales;
+
         lblTotal.setText(String.format("P%.2f", total));
-        // Ensure you have a lblTax in your GUI design, or comment this out
-        if (lblTax != null) {
-            lblTax.setText(String.format("P%.2f", vat));
-        }
+        
+        // This will now work if you renamed the label correctly
+        lblTax.setText(String.format("P%.2f", vat)); 
     }
 
     // Call this from your "Remove" Button
@@ -327,6 +331,10 @@ public class ChowkingPOS extends javax.swing.JFrame {
     private void clearCart() {
         cart.clear();
         updateCartTable();
+
+        lblCash.setText("P0.00");
+        lblChange.setText("P0.00");
+        lblTotal.setText("P0.00");
     }
 
     // Call this from "Pay" Button
@@ -355,42 +363,51 @@ public class ChowkingPOS extends javax.swing.JFrame {
         double cashProvided = 0;
         double change = 0;
 
-        // 3. Handle Input based on Method
+        // --- STRICT LOGIC SPLIT ---
         if (selectedMethod.equals("CASH")) {
-            // --- CASH LOGIC (Ask for amount) ---
+            // >>> OPTION A: CASH (User types amount)
             String cashStr = NumpadDialog.show(this, "Total: P" + totalAmount + "\nEnter Cash:");
             if (cashStr == null) return; // Cancelled
             
             try {
                 cashProvided = Double.parseDouble(cashStr);
+                
+                // Block if cash is not enough
                 if (cashProvided < totalAmount) {
                     javax.swing.JOptionPane.showMessageDialog(this, "Insufficient Cash!");
-                    return;
+                    return; 
                 }
                 change = cashProvided - totalAmount;
-            } catch (NumberFormatException e) { return; }
+                
+            } catch (NumberFormatException e) { 
+                return; // Invalid number typed
+            }
             
         } else {
-            // --- E-WALLET / CARD LOGIC (Exact Payment) ---
-            // Optional: You could ask for a Reference Number here if you want
+            // >>> OPTION B: E-WALLET (Exact Payment Only)
+            // We force cashProvided to match total because there is no "change" in GCash
             cashProvided = totalAmount; 
             change = 0;
             javax.swing.JOptionPane.showMessageDialog(this, selectedMethod + " Payment Confirmed.");
         }
 
-        // 4. Save Data (Include the Payment Method!)
+        // 3. Update Screen Labels
+        lblCash.setText(String.format("P%.2f", cashProvided));
+        lblChange.setText(String.format("P%.2f", change));
+
+        // 4. Save Data for Reprint
         lastTransactionItems.clear();
         lastTransactionItems.addAll(cart);
         lastTotal = totalAmount;
         lastCash = cashProvided;
         lastChange = change;
-        lastPaymentMethod = selectedMethod; // <--- SAVE METHOD
+        lastPaymentMethod = selectedMethod; 
 
-        // 5. Show Popup & Print
+        // 5. Generate Receipt
         showAsciiReceiptPopup(totalAmount, cashProvided, change, selectedMethod);
         printReceipt(totalAmount, cashProvided, change);
 
-        // 6. Clear
+        // 6. Finish
         clearCart();
     }
 
@@ -427,17 +444,19 @@ public class ChowkingPOS extends javax.swing.JFrame {
     // CHANGED: Added 'String payMethod' to the arguments
     private void showAsciiReceiptPopup(double total, double cash, double change, String payMethod) {
         StringBuilder sb = new StringBuilder();
-        
+
         // ... (Keep your existing Header and Time code here) ...
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd  HH:mm:ss");
         String dateTimeStr = now.format(formatter);
-        
+
         // ... (Keep your existing VAT calculation code here) ...
         double vatableSales = total / 1.12;
         double vatAmount = total - vatableSales;
         int totalItems = 0;
-        for (CartItem c : cart) totalItems += c.quantity;
+        for (CartItem c : cart) {
+            totalItems += c.quantity;
+        }
 
         // ... (Keep Header building code) ...
         sb.append("\t     CHOWKING POS SYSTEM\n");
@@ -448,20 +467,20 @@ public class ChowkingPOS extends javax.swing.JFrame {
         // ... (Keep Item Loop code) ...
         for (int i = 0; i < cart.size(); i++) {
             CartItem c = cart.get(i);
-            sb.append(String.format("\t %d. %-15s - %.2f x %d = P%.2f\n", 
-                i + 1, truncate(c.item.name, 15), c.item.price, c.quantity, c.item.price * c.quantity));
+            sb.append(String.format("\t %d. %-15s - %.2f x %d = P%.2f\n",
+                    i + 1, truncate(c.item.name, 15), c.item.price, c.quantity, c.item.price * c.quantity));
         }
 
         // --- UPDATED FOOTER ---
         sb.append("\t ----------------------------------------\n");
-        sb.append(String.format("\t %.0f Item(s)                     %.2f\n", (double)totalItems, total));
+        sb.append(String.format("\t %.0f Item(s)                     %.2f\n", (double) totalItems, total));
         sb.append(String.format("\t TOTAL DUE                     %.2f\n", total));
-        
+
         // CHANGED: Display the Payment Method Name
-        sb.append(String.format("\t %-30s%.2f\n", payMethod, cash)); 
-        
+        sb.append(String.format("\t %-30s%.2f\n", payMethod, cash));
+
         sb.append(String.format("\t CHANGE DUE                    %.2f\n\n", change));
-        
+
         // ... (Keep the rest of the Footer/VAT code) ...
         sb.append(String.format("\t VATable Sales                 %.2f\n", vatableSales));
         sb.append(String.format("\t VAT Amount                    %.2f\n", vatAmount));
@@ -470,7 +489,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
 
         // ... (Keep existing TextArea/ScrollPane code) ...
         javax.swing.JTextArea textArea = new javax.swing.JTextArea(sb.toString());
-        textArea.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12)); 
+        textArea.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
         textArea.setEditable(false);
         javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(textArea);
         scrollPane.setPreferredSize(new java.awt.Dimension(400, 500));
@@ -501,7 +520,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
         jPanel2 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         tblCart = new javax.swing.JTable();
-        lblTax = new javax.swing.JLabel();
+        lblCash = new javax.swing.JLabel();
         lblTotal = new javax.swing.JLabel();
         removeBtn = new javax.swing.JButton();
         resetBtn = new javax.swing.JButton();
@@ -509,6 +528,10 @@ public class ChowkingPOS extends javax.swing.JFrame {
         reprintBtn = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        lblTax = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        lblChange = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         getContentPane().setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
@@ -547,30 +570,38 @@ public class ChowkingPOS extends javax.swing.JFrame {
         jScrollPane2.setViewportView(tblCart);
 
         jPanel2.add(jScrollPane2);
-        jScrollPane2.setBounds(730, 10, 630, 520);
+        jScrollPane2.setBounds(730, 10, 630, 490);
 
-        lblTax.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        lblTax.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-        lblTax.setText("P0.00");
-        jPanel2.add(lblTax);
-        lblTax.setBounds(1140, 530, 220, 20);
+        lblCash.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        lblCash.setForeground(new java.awt.Color(51, 51, 51));
+        lblCash.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        lblCash.setText("P0.00");
+        jPanel2.add(lblCash);
+        lblCash.setBounds(1140, 550, 220, 20);
 
         lblTotal.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         lblTotal.setForeground(new java.awt.Color(255, 51, 51));
         lblTotal.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         lblTotal.setText("P0.00");
+        lblTotal.setVerticalAlignment(javax.swing.SwingConstants.TOP);
         jPanel2.add(lblTotal);
-        lblTotal.setBounds(1140, 550, 220, 32);
+        lblTotal.setBounds(1140, 520, 220, 32);
 
+        removeBtn.setBackground(new java.awt.Color(112, 112, 112));
+        removeBtn.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        removeBtn.setForeground(new java.awt.Color(255, 255, 255));
         removeBtn.setText("Remove");
         removeBtn.addActionListener(this::removeBtnActionPerformed);
         jPanel2.add(removeBtn);
-        removeBtn.setBounds(730, 600, 140, 50);
+        removeBtn.setBounds(730, 600, 200, 50);
 
+        resetBtn.setBackground(new java.awt.Color(255, 200, 0));
+        resetBtn.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        resetBtn.setForeground(new java.awt.Color(255, 255, 255));
         resetBtn.setText("Reset");
         resetBtn.addActionListener(this::resetBtnActionPerformed);
         jPanel2.add(resetBtn);
-        resetBtn.setBounds(910, 600, 140, 50);
+        resetBtn.setBounds(940, 600, 210, 50);
 
         payBtn.setBackground(new java.awt.Color(0, 102, 0));
         payBtn.setFont(new java.awt.Font("Segoe UI", 1, 24)); // NOI18N
@@ -580,22 +611,48 @@ public class ChowkingPOS extends javax.swing.JFrame {
         jPanel2.add(payBtn);
         payBtn.setBounds(730, 660, 630, 50);
 
+        reprintBtn.setBackground(new java.awt.Color(64, 64, 64));
+        reprintBtn.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        reprintBtn.setForeground(new java.awt.Color(255, 255, 255));
         reprintBtn.setText("Reprint");
         reprintBtn.addActionListener(this::reprintBtnActionPerformed);
         jPanel2.add(reprintBtn);
-        reprintBtn.setBounds(1080, 600, 140, 50);
+        reprintBtn.setBounds(1160, 600, 200, 50);
 
         jLabel1.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
         jLabel1.setText("TOTAL:");
         jPanel2.add(jLabel1);
-        jLabel1.setBounds(730, 560, 80, 20);
+        jLabel1.setBounds(730, 520, 80, 20);
 
-        jLabel3.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
         jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        jLabel3.setText("VAT (12%):");
+        jLabel3.setText("Cash:");
         jPanel2.add(jLabel3);
-        jLabel3.setBounds(730, 540, 80, 20);
+        jLabel3.setBounds(730, 550, 80, 16);
+
+        jLabel4.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        jLabel4.setText("VAT (12%):");
+        jPanel2.add(jLabel4);
+        jLabel4.setBounds(730, 500, 80, 20);
+
+        lblTax.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        lblTax.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        lblTax.setText("P0.00");
+        jPanel2.add(lblTax);
+        lblTax.setBounds(1140, 500, 220, 20);
+
+        jLabel5.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        jLabel5.setText("Change:");
+        jPanel2.add(jLabel5);
+        jLabel5.setBounds(730, 570, 80, 16);
+
+        lblChange.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
+        lblChange.setForeground(new java.awt.Color(51, 51, 51));
+        lblChange.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        lblChange.setText("P0.00");
+        jPanel2.add(lblChange);
+        lblChange.setBounds(1140, 570, 220, 20);
 
         getContentPane().add(jPanel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 50, 1366, 718));
 
@@ -768,8 +825,12 @@ public class ChowkingPOS extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JLabel lblCash;
+    private javax.swing.JLabel lblChange;
     private javax.swing.JLabel lblTax;
     private javax.swing.JLabel lblTotal;
     private javax.swing.JButton payBtn;
