@@ -39,7 +39,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
         customInit();
     }
 
-    // --- 2. CUSTOM INIT ---
+    // --- CUSTOM INIT ---
     public void customInit() {
         // Setup Cart Table Model
         String[] columns = {"Item", "Qty", "Price", "Total"};
@@ -60,7 +60,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
         tblCart.getColumnModel().getColumn(2).setCellRenderer(rightRenderer);
         tblCart.getColumnModel().getColumn(3).setCellRenderer(rightRenderer);
 
-        // Double click to edit quantity
+        // double click to edit quantity
         tblCart.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
@@ -69,21 +69,20 @@ public class ChowkingPOS extends javax.swing.JFrame {
             }
         });
 
-        // Setup Menu Grid Layout (3 Columns)
+        // Setup Menu Grid Layout 3
         pnlMenuGrid.setLayout(new GridLayout(0, 3, 15, 15));
 
-        // Create Category Buttons Programmatically
+        // Create Category Buttons
         createCategoryButtons();
 
-        // Load initial menu
+        // Load menu
         loadMenuCategory("Rice Meals");
     }
 
-    // --- 3. LOGIC METHODS ---
+    // --- LOGIC ---
     private void createCategoryButtons() {
         pnlCategories.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 10));
 
-        // CHANGED: Specific Chowking Categories
         String[] categories = {"Rice Meals", "Noodles & Dim Sum", "Sides & Add-ons", "Dessert & Beverages"};
 
         for (String cat : categories) {
@@ -98,7 +97,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
     }
 
     private void reprintAsciiPopup() {
-        // 1. Safety Check
+        // Safety Check
         if (lastTransactionItems.isEmpty()) {
             javax.swing.JOptionPane.showMessageDialog(this, "No previous transaction to reprint.");
             return;
@@ -106,11 +105,11 @@ public class ChowkingPOS extends javax.swing.JFrame {
 
         StringBuilder sb = new StringBuilder();
 
-        // 2. GET TIME
+        // GET TIME
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
         String dateTimeStr = now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd  HH:mm:ss"));
 
-        // 3. RE-CALCULATE
+        // RE-CALCULATE
         double vatableSales = lastTotal / 1.12;
         double vatAmount = lastTotal - vatableSales;
         int totalItems = 0;
@@ -118,7 +117,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
             totalItems += c.quantity;
         }
 
-        // 4. BUILD STRING (Using SAVED Data)
+        // resibo
         sb.append("\t     CHOWKING POS SYSTEM\n");
         sb.append("\t   San Jose del Monte Branch\n");
         sb.append("\t   " + dateTimeStr + " (REPRINT)\n");
@@ -148,7 +147,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
         sb.append("\t          ** REPRINT COPY ** \n");
         sb.append("\t =====================================\n");
         sb.append(String.format("\t %-30s%.2f\n", lastPaymentMethod, lastCash));
-        // 5. SHOW POPUP
+        // SHOW POPUP
         javax.swing.JTextArea textArea = new javax.swing.JTextArea(sb.toString());
         textArea.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
         textArea.setEditable(false);
@@ -163,8 +162,6 @@ public class ChowkingPOS extends javax.swing.JFrame {
         pnlMenuGrid.removeAll();
         currentMenu.clear();
 
-        // CHANGED: Added image filenames (Make sure these match your actual files!)
-        // CHANGED: Complete Chowking Menu from your list
         switch (category) {
             case "Rice Meals":
                 // Chao Fan Series
@@ -231,19 +228,19 @@ public class ChowkingPOS extends javax.swing.JFrame {
                 break;
         }
 
-        // Generate Buttons with Images
+        // buttons with Images
         for (MenuItem item : currentMenu) {
-            // 1. Create Button with HTML for text formatting
+            
             JButton itemBtn = new JButton("<html><center>" + item.name + "<br>P" + item.price + "</center></html>");
 
-            // 2. Load and Resize Image
+            // Load and Resize Image
             try {
-                // Load the image from the project resources
+                // Load the image
                 java.net.URL imgURL = getClass().getResource(item.imageFile);
                 if (imgURL != null) {
                     ImageIcon originalIcon = new ImageIcon(imgURL);
 
-                    // RESIZE: Scale image to fit button (e.g., 100x80 pixels)
+                    // scale
                     Image img = originalIcon.getImage();
                     Image newImg = img.getScaledInstance(100, 80, java.awt.Image.SCALE_SMOOTH);
                     itemBtn.setIcon(new ImageIcon(newImg));
@@ -254,7 +251,6 @@ public class ChowkingPOS extends javax.swing.JFrame {
                 e.printStackTrace();
             }
 
-            // 3. Styling to put Image ON TOP of Text
             itemBtn.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
             itemBtn.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
 
@@ -262,7 +258,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
             itemBtn.setBackground(Color.WHITE);
             itemBtn.setPreferredSize(new Dimension(160, 140)); // Made button taller for image
 
-            // 4. Action Listener (Same as before)
+            // Action Listener 
             itemBtn.addActionListener(e -> {
                 String qtyStr = NumpadDialog.show(this, "Qty for " + item.name);
                 if (qtyStr != null && !qtyStr.isEmpty()) {
@@ -307,18 +303,16 @@ public class ChowkingPOS extends javax.swing.JFrame {
             cartTableModel.addRow(new Object[]{c.item.name, c.quantity, String.format("%.2f", c.item.price), String.format("%.2f", lineTotal)});
         }
         
-        // --- FIX TAX CALCULATION (VAT is usually inside the price) ---
-        // Example: If Total is 112, Vatable is 100, Tax is 12.
+        // --- tax calculator ko
         double vatableSales = total / 1.12; 
         double vat = total - vatableSales;
 
         lblTotal.setText(String.format("P%.2f", total));
         
-        // This will now work if you renamed the label correctly
         lblTax.setText(String.format("P%.2f", vat)); 
     }
 
-    // Call this from your "Remove" Button
+  
     private void removeSelectedItem() {
         int row = tblCart.getSelectedRow();
         if (row != -1) {
@@ -327,7 +321,6 @@ public class ChowkingPOS extends javax.swing.JFrame {
         }
     }
 
-    // Call this from your "Reset" Button
     private void clearCart() {
         cart.clear();
         updateCartTable();
@@ -337,18 +330,17 @@ public class ChowkingPOS extends javax.swing.JFrame {
         lblTotal.setText("P0.00");
     }
 
-    // Call this from "Pay" Button
     private void processPayment() {
         if (cart.isEmpty()) {
             javax.swing.JOptionPane.showMessageDialog(this, "Cart is empty!");
             return;
         }
 
-        // 1. Calculate Total
+        // Total
         double totalAmount = 0;
         for (CartItem c : cart) totalAmount += (c.item.price * c.quantity);
 
-        // 2. Select Payment Method
+        // gcash pang kape lang po
         String[] options = {"CASH", "GCASH", "MAYA", "CARD"};
         int choice = javax.swing.JOptionPane.showOptionDialog(this, 
                 "Select Payment Method for P" + String.format("%.2f", totalAmount), 
@@ -357,22 +349,22 @@ public class ChowkingPOS extends javax.swing.JFrame {
                 javax.swing.JOptionPane.QUESTION_MESSAGE, 
                 null, options, options[0]);
 
-        if (choice == -1) return; // User closed the dialog
+        if (choice == -1) return; 
 
         String selectedMethod = options[choice];
         double cashProvided = 0;
         double change = 0;
 
-        // --- STRICT LOGIC SPLIT ---
+        // --- STRICT LOGIC
         if (selectedMethod.equals("CASH")) {
-            // >>> OPTION A: CASH (User types amount)
+           
             String cashStr = NumpadDialog.show(this, "Total: P" + totalAmount + "\nEnter Cash:");
             if (cashStr == null) return; // Cancelled
             
             try {
                 cashProvided = Double.parseDouble(cashStr);
                 
-                // Block if cash is not enough
+                // if cash is not enough
                 if (cashProvided < totalAmount) {
                     javax.swing.JOptionPane.showMessageDialog(this, "Insufficient Cash!");
                     return; 
@@ -380,22 +372,20 @@ public class ChowkingPOS extends javax.swing.JFrame {
                 change = cashProvided - totalAmount;
                 
             } catch (NumberFormatException e) { 
-                return; // Invalid number typed
+                return; // Invalid number
             }
             
         } else {
-            // >>> OPTION B: E-WALLET (Exact Payment Only)
-            // We force cashProvided to match total because there is no "change" in GCash
             cashProvided = totalAmount; 
             change = 0;
             javax.swing.JOptionPane.showMessageDialog(this, selectedMethod + " Payment Confirmed.");
         }
 
-        // 3. Update Screen Labels
+        // Update Screen Labels
         lblCash.setText(String.format("P%.2f", cashProvided));
         lblChange.setText(String.format("P%.2f", change));
 
-        // 4. Save Data for Reprint
+        // for Reprint tohh
         lastTransactionItems.clear();
         lastTransactionItems.addAll(cart);
         lastTotal = totalAmount;
@@ -403,11 +393,10 @@ public class ChowkingPOS extends javax.swing.JFrame {
         lastChange = change;
         lastPaymentMethod = selectedMethod; 
 
-        // 5. Generate Receipt
+        // Resibo ulit
         showAsciiReceiptPopup(totalAmount, cashProvided, change, selectedMethod);
         printReceipt(totalAmount, cashProvided, change);
 
-        // 6. Finish
         clearCart();
     }
 
@@ -428,7 +417,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
         }
     }
 
-    // --- 4. RECEIPT PRINTING ---
+    // printing the resibo
     private void printReceipt(double total, double cash, double change) {
         PrinterJob job = PrinterJob.getPrinterJob();
         job.setPrintable(new ReceiptPrintable(new ArrayList<>(cart), total, cash, change));
@@ -441,16 +430,14 @@ public class ChowkingPOS extends javax.swing.JFrame {
         }
     }
 
-    // CHANGED: Added 'String payMethod' to the arguments
     private void showAsciiReceiptPopup(double total, double cash, double change, String payMethod) {
         StringBuilder sb = new StringBuilder();
 
-        // ... (Keep your existing Header and Time code here) ...
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd  HH:mm:ss");
         String dateTimeStr = now.format(formatter);
 
-        // ... (Keep your existing VAT calculation code here) ...
+        // vat calculator para sa bayan
         double vatableSales = total / 1.12;
         double vatAmount = total - vatableSales;
         int totalItems = 0;
@@ -458,36 +445,32 @@ public class ChowkingPOS extends javax.swing.JFrame {
             totalItems += c.quantity;
         }
 
-        // ... (Keep Header building code) ...
+        // header
         sb.append("\t     CHOWKING POS SYSTEM\n");
         sb.append("\t   San Jose del Monte Branch\n");
         sb.append("\t   " + dateTimeStr + "\n");
         sb.append("\t   -------------------------\n\n");
 
-        // ... (Keep Item Loop code) ...
         for (int i = 0; i < cart.size(); i++) {
             CartItem c = cart.get(i);
             sb.append(String.format("\t %d. %-15s - %.2f x %d = P%.2f\n",
                     i + 1, truncate(c.item.name, 15), c.item.price, c.quantity, c.item.price * c.quantity));
         }
 
-        // --- UPDATED FOOTER ---
+        // footer
         sb.append("\t ----------------------------------------\n");
         sb.append(String.format("\t %.0f Item(s)                     %.2f\n", (double) totalItems, total));
         sb.append(String.format("\t TOTAL DUE                     %.2f\n", total));
 
-        // CHANGED: Display the Payment Method Name
         sb.append(String.format("\t %-30s%.2f\n", payMethod, cash));
 
         sb.append(String.format("\t CHANGE DUE                    %.2f\n\n", change));
 
-        // ... (Keep the rest of the Footer/VAT code) ...
         sb.append(String.format("\t VATable Sales                 %.2f\n", vatableSales));
         sb.append(String.format("\t VAT Amount                    %.2f\n", vatAmount));
         sb.append("\n\t This serves as your OFFICIAL RECEIPT.\n");
         sb.append("\t =====================================\n");
 
-        // ... (Keep existing TextArea/ScrollPane code) ...
         javax.swing.JTextArea textArea = new javax.swing.JTextArea(sb.toString());
         textArea.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
         textArea.setEditable(false);
@@ -496,7 +479,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
         javax.swing.JOptionPane.showMessageDialog(this, scrollPane, "Official Receipt", javax.swing.JOptionPane.INFORMATION_MESSAGE);
     }
 
-// Helper to prevent long names from breaking the ASCII layout
+// prevent long names 
     private String truncate(String str, int width) {
         if (str.length() > width) {
             return str.substring(0, width);
@@ -701,7 +684,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(() -> new ChowkingPOS().setVisible(true));
     }
 
-    // --- 5. INNER CLASSES ---
+    // INNER CLASSES
     static class MenuItem {
 
         String name;
@@ -726,7 +709,7 @@ public class ChowkingPOS extends javax.swing.JFrame {
         }
     }
 
-    // Defines the PDF/Print Layout
+    // for printing pdf
     static class ReceiptPrintable implements Printable {
 
         List<CartItem> items;
@@ -747,19 +730,19 @@ public class ChowkingPOS extends javax.swing.JFrame {
             g2d.translate(pf.getImageableX(), pf.getImageableY());
             int y = 20;
 
-            // CHANGED: Chowking Header
+           
             g2d.setFont(new Font("Monospaced", Font.BOLD, 12));
             g2d.drawString("CHOWKING POS RECEIPT", 10, y);
             y += 20;
             g2d.drawString("San Jose del Monte Branch", 10, y);
-            y += 20; // Example Location
+            y += 20; 
             g2d.drawString("---------------------", 10, y);
             y += 20;
 
             g2d.setFont(new Font("Monospaced", Font.PLAIN, 10));
             for (CartItem c : items) {
                 g2d.drawString(c.quantity + "x " + c.item.name, 10, y);
-                // Align price to right (approximate)
+                
                 g2d.drawString(String.format("%.2f", c.item.price * c.quantity), 160, y);
                 y += 15;
             }
@@ -777,10 +760,9 @@ public class ChowkingPOS extends javax.swing.JFrame {
         }
     }
 
-    // The Touch Numpad (Kept exactly the same)
+    // Touch Numpad 
     static class NumpadDialog extends JDialog {
-
-        private String value = "";
+        
         private JTextField display;
         private boolean confirmed = false;
 
@@ -789,34 +771,65 @@ public class ChowkingPOS extends javax.swing.JFrame {
             setSize(300, 400);
             setLocationRelativeTo(owner);
             setLayout(new BorderLayout());
+
             display = new JTextField();
             display.setFont(new Font("SansSerif", Font.BOLD, 24));
+            display.setHorizontalAlignment(JTextField.RIGHT);
+            
+            display.addActionListener(e -> validateAndConfirm());
+            
             add(display, BorderLayout.NORTH);
-            JPanel p = new JPanel(new GridLayout(4, 3));
+
+            JPanel p = new JPanel(new GridLayout(4, 3, 5, 5));
             String[] k = {"7", "8", "9", "4", "5", "6", "1", "2", "3", "C", "0", "OK"};
+            
             for (String s : k) {
                 JButton b = new JButton(s);
+                b.setFont(new Font("Segoe UI", Font.BOLD, 18));
+                
                 b.addActionListener(e -> {
                     if (s.equals("C")) {
-                        value = "";
-                        display.setText("");
+                        display.setText(""); 
                     } else if (s.equals("OK")) {
-                        confirmed = true;
-                        dispose();
+                        validateAndConfirm(); 
                     } else {
-                        value += s;
-                        display.setText(value);
+                        display.setText(display.getText() + s);
                     }
+                    display.requestFocusInWindow(); 
                 });
                 p.add(b);
             }
             add(p, BorderLayout.CENTER);
         }
 
+      
+        private void validateAndConfirm() {
+            String text = display.getText().trim();
+            
+            
+            if (text.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Input cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
+                return; 
+            }
+
+            // Is it a number
+            try {
+                Double.parseDouble(text); 
+                
+                // if successful:
+                confirmed = true;
+                dispose(); // Close
+            } catch (NumberFormatException e) {
+                // failed:
+                JOptionPane.showMessageDialog(this, "Invalid Input! Please enter numbers only.", "Error", JOptionPane.ERROR_MESSAGE);
+                display.selectAll(); 
+            }
+        }
+
         public static String show(Frame owner, String title) {
             NumpadDialog d = new NumpadDialog(owner, title);
             d.setVisible(true);
-            return d.confirmed ? d.value : null;
+            return d.confirmed ? d.display.getText() : null;
         }
     }
 
